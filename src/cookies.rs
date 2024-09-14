@@ -1,44 +1,38 @@
 use std::net::TcpStream;
-use std::io::prelude::*;
-use rand::{thread_rng, Rng};
-use rand::distributions::Alphanumeric;
+use std::time::{SystemTime, UNIX_EPOCH};
+use std::io::Write;
+use rand::Rng;
 
-// Función para generar un ID de sesión aleatorio
-fn generate_session_id() -> String {
-    thread_rng()
-        .sample_iter(&Alphanumeric)
-        .take(16) // Generar un ID de 16 caracteres
-        .map(char::from)
-        .collect()
-}
-
-// Función para enviar una cookie de sesión
-pub fn send_cookie_response(stream: &mut TcpStream) {
-    let session_id = generate_session_id(); // Genera un ID de sesión dinámico
-    let cookie = format!("Set-Cookie: sessionId={}; Path=/; HttpOnly", session_id);
-
-    let response = format!(
-        "HTTP/1.1 200 OK\r\n{}\r\nContent-Length: 13\r\n\r\nHello, World!",
-        cookie
-    );
-
-    stream.write(response.as_bytes()).unwrap();
-    stream.flush().unwrap();
-}
-
-// Función para leer las cookies enviadas por el cliente
-pub fn read_cookies(request: &str) -> Option<String> {
-    if let Some(cookie_start) = request.find("Cookie:") {
-        let cookies_str = &request[cookie_start..];
-        let cookie_end = cookies_str.find("\r\n").unwrap_or(cookies_str.len());
-        let cookies = &cookies_str[..cookie_end];
-
-        // Buscar la cookie "sessionId"
-        for cookie in cookies.split("; ") {
-            if cookie.starts_with("sessionId=") {
-                return Some(cookie["sessionId=".len()..].to_string());
+/// Parse the incoming request headers and extract the session cookie, if present.
+pub fn get_session_cookie(request: &str) -> Option<String> {
+    for line in request.lines() {
+        if line.starts_with("Cookie:") {
+            let cookies = line.replace("Cookie: ", "");
+            for cookie in cookies.split(';') {
+                let parts: Vec<&str> = cookie.trim().split('=').collect();
+                if parts.len() == 2 && parts[0] == "session_id" {
+                    return Some(parts[1].to_string());
+                }
             }
         }
     }
     None
+}
+
+/// Generate a unique session ID.
+pub fn generate_session_id() -> String {
+    let mut rng = rand::thread_rng();
+    let random_number: u64 = rng.gen();
+    let current_time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+    format!("{}-{}", random_number, current_time)
+}
+
+/// Set a new session cookie in the response headers.
+pub fn set_session_cookie(stream: &mut TcpStream, session_id: &str) {
+    let set_cookie_header = format!(
+        "Set-Cookie: session_id={}; Path=/; HttpOnly\r\n",
+        session_id
+    );
+    let response_headers = format!("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n{}\r\n", set_cookie_header);
+    stream.write(response_headers.as_bytes()).unwrap();
 }
