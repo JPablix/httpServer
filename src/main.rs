@@ -2,7 +2,7 @@ use std::net::{TcpListener, TcpStream};
 use std::io::{Read, Write, BufReader, BufRead};
 use std::sync::Arc;
 use std::time::Duration;
-
+use std::thread;
 
 mod cookies;
 mod thread_pool;
@@ -28,10 +28,7 @@ fn handle_client(mut stream: TcpStream, db: person::Database) {
         return;
     }
 
-    println!("Request headers: {}", request);  // Depuración: Ver los headers recibidos
-
-    // Encontrar el método de la solicitud
-    let method = request.lines().next().unwrap_or("").split_whitespace().next().unwrap_or("");
+    //println!("Request headers: {}", request);  // Depuración: Ver los headers recibidos
 
     // Extraer el valor de Content-Length para solicitudes PATCH/POST/PUT
     let content_length = request.lines()
@@ -40,7 +37,7 @@ fn handle_client(mut stream: TcpStream, db: person::Database) {
         .and_then(|len| len.trim().parse::<usize>().ok())
         .unwrap_or(0);
 
-    println!("Content-Length (parsed): {}", content_length);  // Depuración: Verificar si se detecta Content-Length
+    //println!("Content-Length (parsed): {}", content_length);  // Depuración: Verificar si se detecta Content-Length
 
     let mut body = String::new();
 
@@ -48,8 +45,23 @@ fn handle_client(mut stream: TcpStream, db: person::Database) {
         let mut buffer = vec![0; content_length];
         reader.read_exact(&mut buffer).unwrap();  // Leer exactamente el número de bytes esperados
         body = String::from_utf8_lossy(&buffer).to_string();
-        println!("Body received: {}", body);  // Depuración: Ver el cuerpo recibido
+        //println!("Body received: {}", body);  // Depuración: Ver el cuerpo recibido
     }
+
+    // Verificar si hay una cookie de sesión en la solicitud
+    let session_id = if let Some(session_cookie) = cookies::get_session_cookie(&request) {
+        println!("Client with session cookie: {}", session_cookie);  // Depuración
+        session_cookie
+    } else {
+        // No hay cookie de sesión, generar una nueva
+        let new_session_id = cookies::generate_session_id();
+        println!("Generating new session id: {}", new_session_id);  // Depuración
+        cookies::set_session_cookie(&mut stream, &new_session_id);  // Ahora podemos escribir la cookie
+        new_session_id
+    };
+
+    // Encontrar el método de la solicitud
+    let method = request.lines().next().unwrap_or("").split_whitespace().next().unwrap_or("");
 
     let response = match method {
         "POST" => person::handle_post(&body, &db),              // Post crea una nueva persona
@@ -70,10 +82,10 @@ fn handle_client(mut stream: TcpStream, db: person::Database) {
 }
 
 
-
 fn main() {
     let listener = TcpListener::bind("127.0.0.1:8080").unwrap();
     let db = create_database();
+    let pool = thread_pool::ThreadPool::new(4); // Tamaño del pool de threads
 
     println!("Listening on port 8080...");
 
@@ -81,7 +93,8 @@ fn main() {
         match stream {
             Ok(stream) => {
                 let db = Arc::clone(&db);
-                std::thread::spawn(move || {
+                println!("\nNew connection established!"); // Depuración
+                pool.execute(|| {
                     handle_client(stream, db);
                 });
             }
