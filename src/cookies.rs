@@ -3,7 +3,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use std::io::Write;
 use rand::Rng;
 
-/// Parse the incoming request headers and extract the session cookie, if present.
+// Parsea los headers de la solicitud entrante y extrae la cookie de sesión, si está presente.
 pub fn get_session_cookie(request: &str) -> Option<String> {
     for line in request.lines() {
         if line.starts_with("Cookie:") {
@@ -19,7 +19,7 @@ pub fn get_session_cookie(request: &str) -> Option<String> {
     None
 }
 
-/// Generate a unique session ID.
+// Genera un ID de sesión único.
 pub fn generate_session_id() -> String {
     let mut rng = rand::thread_rng();
     let random_number: u64 = rng.gen();
@@ -27,7 +27,7 @@ pub fn generate_session_id() -> String {
     format!("{}-{}", random_number, current_time)
 }
 
-/// Set a new session cookie in the response headers.
+// Establece una nueva cookie de sesión en los headers de la respuesta.
 pub fn set_session_cookie(stream: &mut TcpStream, session_id: &str) {
     let set_cookie_header = format!(
         "Set-Cookie: session_id={}; Path=/; HttpOnly\r\n",

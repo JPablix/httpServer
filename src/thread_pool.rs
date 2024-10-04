@@ -9,9 +9,8 @@ pub struct ThreadPool {
 }
 
 impl ThreadPool {
-    /// Creates a new ThreadPool.
-    ///
-    /// The size is the number of threads in the pool.
+    // Crea un nuevo ThreadPool.
+    // El tamaño es la cantidad de hilos en el pool.
     pub fn new(size: usize) -> ThreadPool {
         assert!(size > 0);
 
@@ -27,7 +26,7 @@ impl ThreadPool {
         ThreadPool { workers, sender }
     }
 
-    /// Executes a job by sending it to the thread pool.
+    // Envia un trabajo al ThreadPool.
     pub fn execute<F>(&self, f: F)
     where
         F: FnOnce() + Send + 'static,

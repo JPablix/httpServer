@@ -24,7 +24,7 @@ pub fn handle_post(body: &str, db: &Database) -> String {
     let new_person: Person = match serde_json::from_str(body) {
         Ok(person) => person,
         Err(e) => {
-            eprintln!("Failed to parse JSON: {}", e);  // Depuración
+            eprintln!("Failed to parse JSON: {}", e);  // Ver errores en la consola
             return "HTTP/1.1 400 Bad Request\r\n\r\nInvalid JSON data.".to_string();
         }
     };
@@ -56,7 +56,7 @@ pub fn handle_get(request: &str, db: &Database) -> String {
 }
 
 fn extract_name_from_request(request: &str) -> String {
-    // Supón que el nombre de la persona viene en la URL. Extrae el nombre del request.
+    // Suponemos que el nombre de la persona viene en la URL. Extrae el nombre del request.
     let lines: Vec<&str> = request.lines().collect();
     let url = lines[0].split_whitespace().nth(1).unwrap_or("");
     url.trim_start_matches("/person/").to_string()
@@ -71,7 +71,7 @@ pub fn handle_put(request: &str, body: &str, db: &Database) -> String {
     let updated_person: Person = match serde_json::from_str(body) {
         Ok(person) => person,
         Err(e) => {
-            eprintln!("Failed to parse JSON: {}", e);  // Depuración
+            eprintln!("Failed to parse JSON: {}", e);  // Ver errores en la consola
             return "HTTP/1.1 400 Bad Request\r\n\r\nInvalid JSON data.".to_string();
         }
     };
@@ -114,7 +114,7 @@ pub fn handle_patch(request: &str, body: &str, db: &Database) -> String {
             }
         };
 
-        println!("Patch data: {:?}", patch_data);  // Depuración
+        //println!("Patch data: {:?}", patch_data);  // Depuración
 
         // Actualizar solo los campos proporcionados
         if let Some(new_name) = patch_data.get("name").and_then(|v| v.as_str()) {
