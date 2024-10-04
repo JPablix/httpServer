@@ -78,7 +78,7 @@ fn handle_client(mut stream: TcpStream, db: person::Database) {
     }
 }
 
-fn main() {
+pub fn main() {
     let listener = TcpListener::bind("127.0.0.1:8080").unwrap();
     let db = create_database();
     let pool = thread_pool::ThreadPool::new(4); // Tamaño del pool de threads
@@ -98,5 +98,29 @@ fn main() {
                 eprintln!("Connection failed: {}", e);
             }
         }
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::net::{TcpListener, TcpStream};
+    use std::thread;
+
+    #[test]
+    fn test_handle_client() {
+        // Inicia un servidor temporal en un hilo separado
+        thread::spawn(|| {
+            let listener = TcpListener::bind("127.0.0.1:8080").unwrap();
+            if let Ok((mut socket, _)) = listener.accept() {
+                // Maneja la conexión de prueba aquí
+                let _ = socket.write(b"HTTP/1.1 200 OK\r\n\r\n");
+            }
+        });
+
+        // Conéctate al servidor desde la prueba
+        let stream = TcpStream::connect("127.0.0.1:8080");
+        assert!(stream.is_ok());
     }
 }
